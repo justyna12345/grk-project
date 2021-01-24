@@ -1,17 +1,33 @@
 #version 430 core
 
 uniform sampler2D textureSampler;
-uniform vec3 lightDir;
+uniform vec3 lightPos;
+
+uniform vec3 objectColor;
+uniform vec3 cameraPos;
+
 
 in vec3 interpNormal;
 in vec2 interpTexCoord;
+in vec3 fragPos;
 
 void main()
 {
-	vec2 modifiedTexCoord = vec2(interpTexCoord.x, 1.0 - interpTexCoord.y); // Poprawka dla tekstur Ziemi, ktore bez tego wyswietlaja sie 'do gory nogami'
-	vec3 color = texture2D(textureSampler, modifiedTexCoord).rgb;
+	
+	vec4 color = texture2D(textureSampler, -interpTexCoord);
 	vec3 normal = normalize(interpNormal);
+
+	vec3 lightDir = normalize(lightPos - fragPos);
+
+	vec3 V = normalize(cameraPos - fragPos);
+	vec3 R = reflect(-normalize(lightDir), normal);
+
+	float specular = pow(max(0, dot(R,V)), 10);
+	float diffuse = max(0, dot(normal, normalize(lightDir)));
+
+	vec3 texture = vec3(color.x, color.y, color.z);
+
 	float ambient = 0.2;
-	float diffuse = max(dot(normal, -lightDir), 0.0);
-	gl_FragColor = vec4(color * (ambient + (1-ambient) * diffuse), 1.0);
+	gl_FragColor = vec4(mix(texture, texture * diffuse + vec3(1) * specular, 0.9f), 1.0f) + ambient;
+
 }

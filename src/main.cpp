@@ -16,24 +16,46 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-
+#include "Texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-GLuint program;
+GLuint earthTexture;
+//GLuint program;
 GLuint programSun;
+GLuint programTexture;
+GLuint programSkybox;
 Core::Shader_Loader shaderLoader;
 
+GLuint skyboxTexture;
+
+std::vector<std::string> faces
+{
+	"skybox/right.jpg",
+		"skybox/left.jpg",
+		"skybox/top.jpg",
+		"skybox/bottom.jpg",
+		"skybox/front.jpg",
+		"skybox/back.jpg"
+};
 
 Core::RenderContext armContext;
 std::vector<Core::Node> arm;
 int ballIndex;
 
 
+
 float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
 glm::vec3 cameraDir;
+
+obj::Model sphere;
+Core::RenderContext sphereContext;
+
+obj::Model cube;
+Core::RenderContext cubeContext;
+
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
@@ -76,8 +98,77 @@ void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatr
 	Core::DrawContext(context);
 }
 
+unsigned int loadCubemap(std::vector<std::string> faces)
+{
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+	int width, height, nrChannels;
+	for (unsigned int i = 0; i < faces.size(); i++)
+	{
+		unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+			);
+			stbi_image_free(data);
+		}
+		else
+		{
+			std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+			stbi_image_free(data);
+		}
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
+}
+
+
+void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 modelMatrix, glm::vec3 texture, GLuint textureID)
+{
+	glUseProgram(program);
+
+	//glUniform3f(glGetUniformLocation(program, "objectColor"), color.x, color.y, color.z);
+
+	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
+
+
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
+
+	Core::SetActiveTexture(textureID, "textureSampler", program, 0);
+
+	Core::DrawContext(context);
+}
+
+void drawSkybox(GLuint program, Core::RenderContext context, GLuint textureID) {
+	glUseProgram(program);
+
+	//glUniform3f(glGetUniformLocation(program, "objectColor"), color.x, color.y, color.z);
+
+	glm::mat4 transformation = perspectiveMatrix * glm::mat4(glm::mat3(cameraMatrix));
+
+	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
+
+	glDepthMask(GL_FALSE);
+	glUniform1i(glGetUniformLocation(program, "skybox"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+	Core::DrawContext(context);
+	glDepthMask(GL_TRUE);
+	glUseProgram(0);
+}
+
 void renderScene()
 {
+
 	// Aktualizacja macierzy widoku i rzutowania. Macierze sa przechowywane w zmiennych globalnych, bo uzywa ich funkcja drawObject.
 	// (Bardziej elegancko byloby przekazac je jako argumenty do funkcji, ale robimy tak dla uproszczenia kodu.
 	//  Jest to mozliwe dzieki temu, ze macierze widoku i rzutowania sa takie same dla wszystkich obiektow!)
@@ -88,13 +179,20 @@ void renderScene()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
 
-	glUseProgram(program);
+
+	drawSkybox(programSkybox, cubeContext, skyboxTexture);
+
+	glUseProgram(programTexture);
 
 	// Macierz statku "przyczpeia" go do kamery. Wrato przeanalizowac te linijke i zrozumiec jak to dziala.
-	glm::vec3 lightPos = glm::vec3(-4, 1, -4);
+	glm::vec3 lightPos = glm::vec3(-12, 0, 0);
 	//glUniform3f(glGetUniformLocation(program, "light_dir"), 2, 1, 0);
-	glUniform3f(glGetUniformLocation(program, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	glUniform3f(glGetUniformLocation(programTexture, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+
+	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
+	sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
 
 
 	glUseProgram(0);
@@ -104,14 +202,27 @@ void renderScene()
 void init()
 {
 	glEnable(GL_DEPTH_TEST);
-	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
+	//program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
+	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
+	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
+
+
+	sphere = obj::loadModelFromFile("models/sphere.obj");
+	sphereContext.initFromOBJ(sphere);
+
+	cube = obj::loadModelFromFile("models/cube.obj");
+	cubeContext.initFromOBJ(cube);
+
+	earthTexture = Core::LoadTexture("textures/earth.png");
+
+	skyboxTexture = loadCubemap(faces);
 
 }
 
 void shutdown()
 {
-	shaderLoader.DeleteProgram(program);
+	shaderLoader.DeleteProgram(programSun);
 }
 
 void idle()
