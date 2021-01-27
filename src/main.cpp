@@ -22,6 +22,7 @@
 #include "stb_image.h"
 
 GLuint earthTexture;
+GLuint sunTexture;
 //GLuint program;
 GLuint programSun;
 GLuint programTexture;
@@ -30,9 +31,11 @@ Core::Shader_Loader shaderLoader;
 
 GLuint skyboxTexture;
 
+float frustumScale = 1.0f;
+
 std::vector<std::string> faces
 {
-	"skybox/right.jpg",
+		"skybox/right.jpg",
 		"skybox/left.jpg",
 		"skybox/top.jpg",
 		"skybox/bottom.jpg",
@@ -56,6 +59,14 @@ Core::RenderContext sphereContext;
 obj::Model cube;
 Core::RenderContext cubeContext;
 
+glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
+
+struct Light {
+	glm::vec3 position;
+	glm::vec3 color;
+};
+
+std::vector<Light> lightCollector;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
@@ -131,7 +142,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 }
 
 
-void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 modelMatrix, glm::vec3 texture, GLuint textureID)
+void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 modelMatrix, glm::vec3 color, GLuint textureID)
 {
 	glUseProgram(program);
 
@@ -173,7 +184,7 @@ void renderScene()
 	// (Bardziej elegancko byloby przekazac je jako argumenty do funkcji, ale robimy tak dla uproszczenia kodu.
 	//  Jest to mozliwe dzieki temu, ze macierze widoku i rzutowania sa takie same dla wszystkich obiektow!)
 	cameraMatrix = createCameraMatrix();
-	perspectiveMatrix = Core::createPerspectiveMatrix();
+	perspectiveMatrix = Core::createPerspectiveMatrix(0.01f, 1000.0f, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -182,17 +193,56 @@ void renderScene()
 
 	drawSkybox(programSkybox, cubeContext, skyboxTexture);
 
-	glUseProgram(programTexture);
+	glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 3.0f);
+
 
 	// Macierz statku "przyczpeia" go do kamery. Wrato przeanalizowac te linijke i zrozumiec jak to dziala.
-	glm::vec3 lightPos = glm::vec3(-12, 0, 0);
 	//glUniform3f(glGetUniformLocation(program, "light_dir"), 2, 1, 0);
-	glUniform3f(glGetUniformLocation(programTexture, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	//glUniform3f(glGetUniformLocation(programTexture, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
 	sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
+
+	// SUN
+
+	glUseProgram(programTexture);
+
+
+	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
+	sunModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(time/2, glm::vec3(1.0f, 0.0f, 0.0f)) * 
+		glm::translate(glm::vec3(0.0f, 0.0f, 7.0f));
+
+	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
+	sunModelMatrix2 = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(time, glm::vec3(1.0f, 0.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 14.0f));
+	
+	glm::mat4 sunLight = sunModelMatrix;
+
+	glm::mat4 sunLight2 = sunModelMatrix2;
+
+
+	lightCollector[0].position = glm::vec3(sunLight[3][0], sunLight[3][1], sunLight[3][2]);
+	lightCollector[1].position = glm::vec3(sunLight2[3][0], sunLight2[3][1], sunLight2[3][2]);
+	lightCollector[0].color = glm::vec3(1.0f, 0.0f, 0.0f);
+	lightCollector[1].color = glm::vec3(0.0f, 1.0f, 0.0f);
+
+	for (int i = 0; i < lightCollector.size(); i++) {
+		std::string pos = "lights[" + std::to_string(i) + "].Pos";
+		std::string color = "lights[" + std::to_string(i) + "].Color";
+		glUniform3f(glGetUniformLocation(programTexture, pos.c_str()), lightCollector[i].position.x, lightCollector[i].position.y, 
+			lightCollector[i].position.z);
+		glUniform3f(glGetUniformLocation(programTexture, color.c_str()), lightCollector[i].color.x, lightCollector[i].color.y,
+			lightCollector[i].color.z);
+	}
+
+	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
+
+	glUseProgram(programSun);
+
+	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	drawObjectTexture(programSun, sphereContext, sunModelMatrix, lightColor, sunTexture);
+	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, lightColor, sunTexture);
 
 
 	glUseProgram(0);
@@ -215,9 +265,19 @@ void init()
 	cubeContext.initFromOBJ(cube);
 
 	earthTexture = Core::LoadTexture("textures/earth.png");
+	sunTexture = Core::LoadTexture("textures/earth.png");
 
 	skyboxTexture = loadCubemap(faces);
 
+	Light l1;
+	l1.position = glm::vec3(0.0f);
+	l1.color = glm::vec3(1.0f, 0.0f, 0.0f);
+	lightCollector.push_back(l1);
+
+	Light l2;
+	l2.position = glm::vec3(0.0f);
+	l2.color = glm::vec3(1.0f, 0.0f, 0.0f);
+	lightCollector.push_back(l2);
 }
 
 void shutdown()
@@ -230,12 +290,17 @@ void idle()
 	glutPostRedisplay();
 }
 
+void onReshape(int width, int height) {
+	frustumScale = (float)width / (float)height;
+	glViewport(0, 0, width, height);
+}
+
 int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(200, 300);
-	glutInitWindowSize(1000, 1000);
+	glutInitWindowSize(1240, 720);
 	glutCreateWindow("OpenGL Pierwszy Program");
 	glewInit();
 
@@ -244,6 +309,7 @@ int main(int argc, char** argv)
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
 
+	glutReshapeFunc(onReshape);
 	glutMainLoop();
 
 	shutdown();
