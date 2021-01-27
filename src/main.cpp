@@ -265,7 +265,7 @@ void init()
 	cubeContext.initFromOBJ(cube);
 
 	earthTexture = Core::LoadTexture("textures/earth.png");
-	sunTexture = Core::LoadTexture("textures/earth.png");
+	sunTexture = Core::LoadTexture("textures/sun.png");
 
 	skyboxTexture = loadCubemap(faces);
 
