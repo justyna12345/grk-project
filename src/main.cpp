@@ -50,7 +50,7 @@ int ballIndex;
 
 
 float cameraAngle = 0;
-glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
+glm::vec3 cameraPos = glm::vec3(-70, 0, 0);
 glm::vec3 cameraDir;
 
 obj::Model sphere;
@@ -73,7 +73,7 @@ glm::mat4 cameraMatrix, perspectiveMatrix;
 void keyboard(unsigned char key, int x, int y)
 {
 	float angleSpeed = 0.1f;
-	float moveSpeed = 0.1f;
+	float moveSpeed = 0.7f;
 	switch (key)
 	{
 	case 'z': cameraAngle -= angleSpeed; break;
@@ -201,30 +201,31 @@ void renderScene()
 	//glUniform3f(glGetUniformLocation(programTexture, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
-	sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
-
-	// SUN
+	//sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
 
 	glUseProgram(programTexture);
 
-
+	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
-	sunModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(time/2, glm::vec3(1.0f, 0.0f, 0.0f)) * 
-		glm::translate(glm::vec3(0.0f, 0.0f, 7.0f));
+	sunModelMatrix = glm::rotate(time/8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 40.0f)) * glm::rotate(time / 5, glm::vec3(0.0f, -0.1f, 0.0f)) * 
+		glm::scale(glm::vec3(5.0f));
 
+	//comet
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
-	sunModelMatrix2 = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 14.0f));
+	sunModelMatrix2 = glm::rotate(time/3, glm::vec3(-0.8f, 0.4f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 70.0f)) * glm::scale(glm::vec3(0.7f));
 	
 	glm::mat4 sunLight = sunModelMatrix;
-
 	glm::mat4 sunLight2 = sunModelMatrix2;
 
 
 	lightCollector[0].position = glm::vec3(sunLight[3][0], sunLight[3][1], sunLight[3][2]);
 	lightCollector[1].position = glm::vec3(sunLight2[3][0], sunLight2[3][1], sunLight2[3][2]);
-	lightCollector[0].color = glm::vec3(1.0f, 0.0f, 0.0f);
-	lightCollector[1].color = glm::vec3(0.0f, 1.0f, 0.0f);
+
+	lightCollector[0].color = glm::vec3(1.0f, 0.5f, 0.1f);
+	lightCollector[1].color = glm::vec3(0.5f, 0.5f, 1.0f);
+
 
 	for (int i = 0; i < lightCollector.size(); i++) {
 		std::string pos = "lights[" + std::to_string(i) + "].Pos";
@@ -235,15 +236,38 @@ void renderScene()
 			lightCollector[i].color.z);
 	}
 
+	//draw Earth
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
 
+	//draw planets
+	glm::mat4 sphereModelMatrix1 = glm::mat4(1.0f);
+	sphereModelMatrix1 = glm::rotate(time / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, 0.8f, 0.0f)) * 
+		glm::scale(glm::vec3(0.5f));
+
+	glm::mat4 sphereModelMatrix2 = glm::mat4(1.0f);
+	sphereModelMatrix2 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, -0.2f, 0.0f)) * 
+		glm::scale(glm::vec3(0.7f));
+
+	//draw moon
+	glm::mat4 sphereModelMatrix3 = glm::mat4(1.0f);
+	sphereModelMatrix3 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * 
+		glm::rotate(time, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) * 
+		glm::rotate(time / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
+
+	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix2, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
+
 	glUseProgram(programSun);
 
+	//draw sun and comet
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix, lightColor, sunTexture);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, lightColor, sunTexture);
-
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -278,6 +302,11 @@ void init()
 	l2.position = glm::vec3(0.0f);
 	l2.color = glm::vec3(1.0f, 0.0f, 0.0f);
 	lightCollector.push_back(l2);
+
+	Light l3;
+	l3.position = glm::vec3(0.0f);
+	l3.color = glm::vec3(1.0f, 0.0f, 0.0f);
+	lightCollector.push_back(l3);
 }
 
 void shutdown()
