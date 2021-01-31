@@ -70,8 +70,8 @@ Core::RenderContext sphereContext;
 obj::Model cube;
 Core::RenderContext cubeContext;
 
-obj::Model ship;
-Core::RenderContext shipContext;
+//obj::Model ship;
+//Core::RenderContext shipContext;
 
 glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
@@ -194,9 +194,6 @@ void drawSkybox(GLuint program, Core::RenderContext context, GLuint textureID) {
 void renderScene()
 {
 
-	// Aktualizacja macierzy widoku i rzutowania. Macierze sa przechowywane w zmiennych globalnych, bo uzywa ich funkcja drawObject.
-	// (Bardziej elegancko byloby przekazac je jako argumenty do funkcji, ale robimy tak dla uproszczenia kodu.
-	//  Jest to mozliwe dzieki temu, ze macierze widoku i rzutowania sa takie same dla wszystkich obiektow!)
 	cameraMatrix = createCameraMatrix();
 	perspectiveMatrix = Core::createPerspectiveMatrix(0.01f, 1000.0f, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
@@ -212,8 +209,8 @@ void renderScene()
 	// ship
 	//glUseProgram(programTexture1);
 	glUseProgram(programTexture);
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f+ glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
-	
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
+
 
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
 	//sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -221,20 +218,20 @@ void renderScene()
 	glUseProgram(programTexture);
 
 	//ship
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0)) * 
-		glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
+	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0)) * 
+		//glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
 
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
-	sunModelMatrix = glm::rotate(time/8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 40.0f)) * glm::rotate(time / 5, glm::vec3(0.0f, -0.1f, 0.0f)) * 
+	sunModelMatrix = glm::rotate(time / 8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 40.0f)) * glm::rotate(time / 5, glm::vec3(0.0f, -0.1f, 0.0f)) *
 		glm::scale(glm::vec3(5.0f));
 
 	//comet
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
-	sunModelMatrix2 = glm::rotate(time/3, glm::vec3(-0.8f, 0.4f, 0.0f)) *
+	sunModelMatrix2 = glm::rotate(time / 3, glm::vec3(-0.8f, 0.4f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f, 0.0f, 70.0f)) * glm::scale(glm::vec3(0.7f));
-	
+
 	glm::mat4 sunLight = sunModelMatrix;
 	glm::mat4 sunLight2 = sunModelMatrix2;
 
@@ -249,14 +246,14 @@ void renderScene()
 	for (int i = 0; i < lightCollector.size(); i++) {
 		std::string pos = "lights[" + std::to_string(i) + "].Pos";
 		std::string color = "lights[" + std::to_string(i) + "].Color";
-		glUniform3f(glGetUniformLocation(programTexture, pos.c_str()), lightCollector[i].position.x, lightCollector[i].position.y, 
+		glUniform3f(glGetUniformLocation(programTexture, pos.c_str()), lightCollector[i].position.x, lightCollector[i].position.y,
 			lightCollector[i].position.z);
 		glUniform3f(glGetUniformLocation(programTexture, color.c_str()), lightCollector[i].color.x, lightCollector[i].color.y,
 			lightCollector[i].color.z);
 	}
 	//draw Ship
 	glUniform3f(glGetUniformLocation(programShip, "light_dir"), 2, 1, 0);
-	drawObject(programTexture, shipContext, shipModelMatrix , glm::vec3(0.1f));
+	drawObject(programTexture, shipContext, shipModelMatrix, glm::vec3(0.1f));
 	//glUniform3f(glGetUniformLocation(programTexture1, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	//glm::mat4 shipModelMatrix1 = glm::mat4(1.0f);
 	//float angle = 90.0 * (M_PI / 180.0);
@@ -267,7 +264,7 @@ void renderScene()
 
 
 	//draw ship
-	drawObject(programTexture, shipContext, shipModelMatrix, lightColor);
+	//drawObject(programTexture, shipContext, shipModelMatrix, lightColor);
 
 	//draw Earth
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
@@ -275,18 +272,18 @@ void renderScene()
 	//draw planets
 	glm::mat4 sphereModelMatrix1 = glm::mat4(1.0f);
 	sphereModelMatrix1 = glm::rotate(time / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, 0.8f, 0.0f)) * 
+		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
 		glm::scale(glm::vec3(0.5f));
 
 	glm::mat4 sphereModelMatrix2 = glm::mat4(1.0f);
 	sphereModelMatrix2 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, -0.2f, 0.0f)) * 
+		glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
 		glm::scale(glm::vec3(0.7f));
 
 	//draw moon
 	glm::mat4 sphereModelMatrix3 = glm::mat4(1.0f);
-	sphereModelMatrix3 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * 
-		glm::rotate(time, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) * 
+	sphereModelMatrix3 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) *
+		glm::rotate(time, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) *
 		glm::rotate(time / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
 
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);

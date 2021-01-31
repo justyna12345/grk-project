@@ -39,23 +39,21 @@ public:
     vector<Vertex>       vertices;
     vector<unsigned int> indices;
     vector<Texture>      textures;
-    glm::mat4            matrix;
     unsigned int VAO;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures,glm::mat4 matrix)
+    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
     {
         this->vertices = vertices;
         this->indices = indices;
         this->textures = textures;
-        this->matrix = matrix;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
         setupMesh();
     }
 
     // render the mesh
-    void Draw(GLuint program)
+    void Draw(GLuint shader)
     {
         // bind appropriate textures
         unsigned int diffuseNr = 1;
@@ -78,14 +76,13 @@ public:
                 number = std::to_string(heightNr++); // transfer unsigned int to stream
 
             // now set the sampler to the correct texture unit
-            glUniform1i(glGetUniformLocation(program, (name + number).c_str()), i);
+            glUniform1i(glGetUniformLocation(shader, (name + number).c_str()), i);
             // and finally bind the texture
             glBindTexture(GL_TEXTURE_2D, textures[i].id);
         }
 
-        glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (float*)&matrix);
         // draw mesh
-        glBindVertexArray(VAO); 
+        glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
@@ -137,4 +134,3 @@ private:
     }
 };
 #endif
-
