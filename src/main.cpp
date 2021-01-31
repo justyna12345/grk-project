@@ -63,6 +63,9 @@ Core::RenderContext sphereContext;
 obj::Model cube;
 Core::RenderContext cubeContext;
 
+obj::Model ship;
+Core::RenderContext shipContext;
+
 glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
 struct Light {
@@ -209,6 +212,10 @@ void renderScene()
 
 	glUseProgram(programTexture);
 
+	//ship
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0)) * 
+		glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
+
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::rotate(time/8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
@@ -240,8 +247,13 @@ void renderScene()
 			lightCollector[i].color.z);
 	}
 
-	//draw Earth
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+
+
+	//draw ship
+	drawObject(programTexture, shipContext, shipModelMatrix, lightColor);
+
+	//draw Earth
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
 
 	//draw planets
@@ -291,6 +303,9 @@ void init()
 
 	cube = obj::loadModelFromFile("models/cube.obj");
 	cubeContext.initFromOBJ(cube);
+
+	ship = obj::loadModelFromFile("models/spaceship.obj");
+	shipContext.initFromOBJ(ship);
 
 	earthTexture = Core::LoadTexture("textures/earth.png");
 	marsTexture = Core::LoadTexture("textures/mars.png");
