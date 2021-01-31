@@ -25,6 +25,11 @@
 GLuint teslaTexture;
 GLuint earthTexture;
 GLuint sunTexture;
+GLuint marsTexture;
+GLuint cometTexture;
+GLuint jupiterTexture;
+GLuint erisTexture;
+//GLuint program;
 GLuint programShip;
 //GLuint programTexture1;
 GLuint programSun;
@@ -64,6 +69,9 @@ Core::RenderContext sphereContext;
 
 obj::Model cube;
 Core::RenderContext cubeContext;
+
+obj::Model ship;
+Core::RenderContext shipContext;
 
 glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
@@ -212,6 +220,10 @@ void renderScene()
 
 	glUseProgram(programTexture);
 
+	//ship
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0)) * 
+		glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
+
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::rotate(time/8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
@@ -230,8 +242,8 @@ void renderScene()
 	lightCollector[0].position = glm::vec3(sunLight[3][0], sunLight[3][1], sunLight[3][2]);
 	lightCollector[1].position = glm::vec3(sunLight2[3][0], sunLight2[3][1], sunLight2[3][2]);
 
-	lightCollector[0].color = glm::vec3(1.0f, 0.5f, 0.1f);
-	lightCollector[1].color = glm::vec3(0.5f, 0.5f, 1.0f);
+	lightCollector[0].color = glm::vec3(1.0f, 1.0f, 0.9f);
+	lightCollector[1].color = glm::vec3(0.3f, 0.3f, 0.9f);
 
 
 	for (int i = 0; i < lightCollector.size(); i++) {
@@ -251,8 +263,13 @@ void renderScene()
 	//shipModelMatrix1 = shipModelMatrix * glm::rotate(angle, glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.2f));
 	//drawObjectTexture(programTexture1, shipContext, shipModelMatrix1, glm::vec3(0.6f), teslaTexture);
 
-	//draw Earth
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+
+
+	//draw ship
+	drawObject(programTexture, shipContext, shipModelMatrix, lightColor);
+
+	//draw Earth
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
 
 	//draw planets
@@ -273,16 +290,16 @@ void renderScene()
 		glm::rotate(time / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
 
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix2, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), marsTexture);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix2, glm::vec3(1.0f, 0.3f, 0.3f), jupiterTexture);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), erisTexture);
 
 	glUseProgram(programSun);
 
 	//draw sun and comet
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix, lightColor, sunTexture);
-	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, lightColor, sunTexture);
+	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, lightColor, cometTexture);
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -308,6 +325,10 @@ void init()
 
 	//teslaTexture = Core::LoadTexture("textures/a.jpg");
 	earthTexture = Core::LoadTexture("textures/earth.png");
+	marsTexture = Core::LoadTexture("textures/mars.png");
+	jupiterTexture = Core::LoadTexture("textures/jupiter.png");
+	erisTexture = Core::LoadTexture("textures/eris.png");
+	cometTexture = Core::LoadTexture("textures/neptune.png");
 	sunTexture = Core::LoadTexture("textures/sun.png");
 
 	skyboxTexture = loadCubemap(faces);
