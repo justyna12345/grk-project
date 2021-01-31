@@ -19,17 +19,21 @@
 #include "Texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
+#define M_PI 3.14159265358979323846
 #include "stb_image.h"
 
+GLuint teslaTexture;
 GLuint earthTexture;
 GLuint sunTexture;
-//GLuint program;
+GLuint programShip;
+//GLuint programTexture1;
 GLuint programSun;
 GLuint programTexture;
 GLuint programSkybox;
 Core::Shader_Loader shaderLoader;
 
 GLuint skyboxTexture;
+
 
 float frustumScale = 1.0f;
 
@@ -54,6 +58,8 @@ glm::vec3 cameraPos = glm::vec3(-70, 0, 0);
 glm::vec3 cameraDir;
 
 obj::Model sphere;
+obj::Model shipModel;
+Core::RenderContext shipContext;
 Core::RenderContext sphereContext;
 
 obj::Model cube;
@@ -195,10 +201,11 @@ void renderScene()
 
 	glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 3.0f);
 
-
-	// Macierz statku "przyczpeia" go do kamery. Wrato przeanalizowac te linijke i zrozumiec jak to dziala.
-	//glUniform3f(glGetUniformLocation(program, "light_dir"), 2, 1, 0);
-	//glUniform3f(glGetUniformLocation(programTexture, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	// ship
+	//glUseProgram(programTexture1);
+	glUseProgram(programTexture);
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f+ glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
+	
 
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
 	//sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -235,6 +242,14 @@ void renderScene()
 		glUniform3f(glGetUniformLocation(programTexture, color.c_str()), lightCollector[i].color.x, lightCollector[i].color.y,
 			lightCollector[i].color.z);
 	}
+	//draw Ship
+	glUniform3f(glGetUniformLocation(programShip, "light_dir"), 2, 1, 0);
+	drawObject(programTexture, shipContext, shipModelMatrix , glm::vec3(0.1f));
+	//glUniform3f(glGetUniformLocation(programTexture1, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	//glm::mat4 shipModelMatrix1 = glm::mat4(1.0f);
+	//float angle = 90.0 * (M_PI / 180.0);
+	//shipModelMatrix1 = shipModelMatrix * glm::rotate(angle, glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.2f));
+	//drawObjectTexture(programTexture1, shipContext, shipModelMatrix1, glm::vec3(0.6f), teslaTexture);
 
 	//draw Earth
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
@@ -276,11 +291,14 @@ void renderScene()
 void init()
 {
 	glEnable(GL_DEPTH_TEST);
-	//program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
+	programShip = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
 	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 
+	shipModel = obj::loadModelFromFile("models/spaceship.obj");
+	//shipModel = obj::loadModelFromFile("models/cyber.obj");
+	shipContext.initFromOBJ(shipModel);
 
 	sphere = obj::loadModelFromFile("models/sphere.obj");
 	sphereContext.initFromOBJ(sphere);
@@ -288,6 +306,7 @@ void init()
 	cube = obj::loadModelFromFile("models/cube.obj");
 	cubeContext.initFromOBJ(cube);
 
+	//teslaTexture = Core::LoadTexture("textures/a.jpg");
 	earthTexture = Core::LoadTexture("textures/earth.png");
 	sunTexture = Core::LoadTexture("textures/sun.png");
 
