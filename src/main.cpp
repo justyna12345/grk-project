@@ -227,8 +227,8 @@ void renderScene()
 	lightCollector[0].position = glm::vec3(sunLight[3][0], sunLight[3][1], sunLight[3][2]);
 	lightCollector[1].position = glm::vec3(sunLight2[3][0], sunLight2[3][1], sunLight2[3][2]);
 
-	lightCollector[0].color = glm::vec3(1.0f, 0.5f, 0.1f);
-	lightCollector[1].color = glm::vec3(0.5f, 0.5f, 1.0f);
+	lightCollector[0].color = glm::vec3(1.0f, 1.0f, 0.9f);
+	lightCollector[1].color = glm::vec3(0.3f, 0.3f, 0.9f);
 
 
 	for (int i = 0; i < lightCollector.size(); i++) {
