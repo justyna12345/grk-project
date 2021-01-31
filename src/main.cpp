@@ -23,6 +23,10 @@
 
 GLuint earthTexture;
 GLuint sunTexture;
+GLuint marsTexture;
+GLuint cometTexture;
+GLuint jupiterTexture;
+GLuint erisTexture;
 //GLuint program;
 GLuint programSun;
 GLuint programTexture;
@@ -258,16 +262,16 @@ void renderScene()
 		glm::rotate(time / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
 
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix2, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), marsTexture);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix2, glm::vec3(1.0f, 0.3f, 0.3f), jupiterTexture);
+	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), erisTexture);
 
 	glUseProgram(programSun);
 
 	//draw sun and comet
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix, lightColor, sunTexture);
-	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, lightColor, sunTexture);
+	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, lightColor, cometTexture);
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -289,6 +293,10 @@ void init()
 	cubeContext.initFromOBJ(cube);
 
 	earthTexture = Core::LoadTexture("textures/earth.png");
+	marsTexture = Core::LoadTexture("textures/mars.png");
+	jupiterTexture = Core::LoadTexture("textures/jupiter.png");
+	erisTexture = Core::LoadTexture("textures/eris.png");
+	cometTexture = Core::LoadTexture("textures/neptune.png");
 	sunTexture = Core::LoadTexture("textures/sun.png");
 
 	skyboxTexture = loadCubemap(faces);
