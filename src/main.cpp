@@ -70,8 +70,8 @@ Core::RenderContext sphereContext;
 obj::Model cube;
 Core::RenderContext cubeContext;
 
-obj::Model ship;
-Core::RenderContext shipContext;
+//obj::Model ship;
+//Core::RenderContext shipContext;
 
 glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
@@ -221,8 +221,8 @@ void renderScene()
 	glUseProgram(programTexture);
 
 	//ship
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0)) * 
-		glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
+	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0)) * 
+		//glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
 
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
@@ -267,7 +267,7 @@ void renderScene()
 
 
 	//draw ship
-	drawObject(programTexture, shipContext, shipModelMatrix, lightColor);
+	//drawObject(programTexture, shipContext, shipModelMatrix, lightColor);
 
 	//draw Earth
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
