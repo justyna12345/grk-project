@@ -206,20 +206,15 @@ void renderScene()
 
 	glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 3.0f);
 
-	// ship
-	//glUseProgram(programTexture1);
-	glUseProgram(programTexture);
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
-
-
+	
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
 	//sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
 
 	glUseProgram(programTexture);
 
 	//ship
-	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0)) * 
-		//glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0.25, -0.15f, 0)) * 
+		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.10f));
 
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
@@ -251,8 +246,12 @@ void renderScene()
 		glUniform3f(glGetUniformLocation(programTexture, color.c_str()), lightCollector[i].color.x, lightCollector[i].color.y,
 			lightCollector[i].color.z);
 	}
-	//draw Ship
+
 	glUniform3f(glGetUniformLocation(programShip, "light_dir"), 2, 1, 0);
+
+
+	//draw Ship
+	
 	drawObject(programTexture, shipContext, shipModelMatrix, glm::vec3(0.1f));
 	//glUniform3f(glGetUniformLocation(programTexture1, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	//glm::mat4 shipModelMatrix1 = glm::mat4(1.0f);
@@ -263,8 +262,6 @@ void renderScene()
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 
-	//draw ship
-	//drawObject(programTexture, shipContext, shipModelMatrix, lightColor);
 
 	//draw Earth
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
@@ -310,7 +307,7 @@ void init()
 	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 
-	shipModel = obj::loadModelFromFile("models/spaceship.obj");
+	shipModel = obj::loadModelFromFile("models/teslalight.obj");
 	//shipModel = obj::loadModelFromFile("models/cyber.obj");
 	shipContext.initFromOBJ(shipModel);
 
