@@ -29,7 +29,7 @@ GLuint marsTexture;
 GLuint cometTexture;
 GLuint jupiterTexture;
 GLuint erisTexture;
-//GLuint program;
+GLuint program;
 GLuint programShip;
 //GLuint programTexture1;
 GLuint programSun;
@@ -56,6 +56,17 @@ Core::RenderContext armContext;
 std::vector<Core::Node> arm;
 int ballIndex;
 
+struct Bullet {
+	glm::mat4 bulletModelMatrix;
+	glm::vec3 position;
+	float velocityDiv;
+	Core::RenderContext* context;
+	GLuint textureID;
+	glm::vec3 scaleVector;
+	//float age;
+
+};
+std::vector<Bullet*> bullets;
 
 
 float cameraAngle = 0;
@@ -65,6 +76,7 @@ glm::vec3 cameraDir;
 obj::Model sphere;
 obj::Model shipModel;
 Core::RenderContext shipContext;
+glm::mat4 shipModelMatrix = glm::mat4(1.0f);
 Core::RenderContext sphereContext;
 
 obj::Model cube;
@@ -84,6 +96,16 @@ std::vector<Light> lightCollector;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
+
+//struct Renderable {
+//	Core::RenderContext* context;
+//	glm::mat4 modelMatrix;
+//	glm::mat4 scale;
+//	GLuint texttureID;
+//};
+//
+//std::vector<Renderable*> redelables;
+//int rendelableSize = 0;
 void keyboard(unsigned char key, int x, int y)
 {
 	float angleSpeed = 0.1f;
@@ -98,6 +120,28 @@ void keyboard(unsigned char key, int x, int y)
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
 	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	}
+
+
+}
+
+
+
+void createBullet() {
+	Bullet* bullet = new Bullet();
+	bullet->bulletModelMatrix = shipModelMatrix;
+	bullet->velocityDiv = 4.0f;
+	bullet->context = &sphereContext;
+	bullet->textureID= marsTexture;
+	bullet->scaleVector= glm::vec3(0.5f);
+
+	bullets.emplace_back(bullet);
+}
+
+
+void mouseClick(int button, int state, int x, int y) {
+	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+		createBullet();
 	}
 }
 
@@ -122,6 +166,8 @@ void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatr
 
 	Core::DrawContext(context);
 }
+
+
 
 unsigned int loadCubemap(std::vector<std::string> faces)
 {
@@ -213,7 +259,7 @@ void renderScene()
 	glUseProgram(programTexture);
 
 	//ship
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0.25, -0.15f, 0)) * 
+	shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0.25, -0.15f, 0)) * 
 		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.10f));
 
 	//sun
@@ -295,6 +341,15 @@ void renderScene()
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix, lightColor, sunTexture);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, lightColor, cometTexture);
 
+
+	//draw bullet
+	for (int i = 0; i < bullets.size(); i++) {
+		glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+		bullets[i]->bulletModelMatrix*=glm::translate(cameraDir/bullets[i]->velocityDiv);
+		drawObjectTexture(program, *bullets[i]->context, bullets[i]->bulletModelMatrix * glm::scale(bullets[i]->scaleVector), glm::vec3(1.0f, 0.3f, 0.3f), bullets[i]->textureID);
+
+	}
+
 	glUseProgram(0);
 	glutSwapBuffers();
 }
@@ -304,6 +359,7 @@ void init()
 	glEnable(GL_DEPTH_TEST);
 	programShip = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
+	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 
@@ -369,6 +425,7 @@ int main(int argc, char** argv)
 
 	init();
 	glutKeyboardFunc(keyboard);
+	glutMouseFunc(mouseClick);
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
 
