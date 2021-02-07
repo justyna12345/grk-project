@@ -52,9 +52,6 @@ std::vector<std::string> faces
 		"skybox/back.jpg"
 };
 
-Core::RenderContext armContext;
-std::vector<Core::Node> arm;
-int ballIndex;
 
 struct Bullet {
 	glm::mat4 bulletModelMatrix;
@@ -121,8 +118,6 @@ void keyboard(unsigned char key, int x, int y)
 	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
 	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
 	}
-
-
 }
 
 
@@ -167,8 +162,6 @@ void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatr
 	Core::DrawContext(context);
 }
 
-
-
 unsigned int loadCubemap(std::vector<std::string> faces)
 {
 	unsigned int textureID;
@@ -206,8 +199,6 @@ void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 mo
 {
 	glUseProgram(program);
 
-	//glUniform3f(glGetUniformLocation(program, "objectColor"), color.x, color.y, color.z);
-
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
 
 
@@ -221,8 +212,6 @@ void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 mo
 
 void drawSkybox(GLuint program, Core::RenderContext context, GLuint textureID) {
 	glUseProgram(program);
-
-	//glUniform3f(glGetUniformLocation(program, "objectColor"), color.x, color.y, color.z);
 
 	glm::mat4 transformation = perspectiveMatrix * glm::mat4(glm::mat3(cameraMatrix));
 
@@ -294,20 +283,16 @@ void renderScene()
 	}
 
 	glUniform3f(glGetUniformLocation(programShip, "light_dir"), 2, 1, 0);
+	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 
 	//draw Ship
-	
 	drawObject(programTexture, shipContext, shipModelMatrix, glm::vec3(0.1f));
 	//glUniform3f(glGetUniformLocation(programTexture1, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 	//glm::mat4 shipModelMatrix1 = glm::mat4(1.0f);
 	//float angle = 90.0 * (M_PI / 180.0);
 	//shipModelMatrix1 = shipModelMatrix * glm::rotate(angle, glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.2f));
 	//drawObjectTexture(programTexture1, shipContext, shipModelMatrix1, glm::vec3(0.6f), teslaTexture);
-
-	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-
-
 
 	//draw Earth
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
@@ -363,9 +348,8 @@ void init()
 	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 
-	shipModel = obj::loadModelFromFile("models/teslalight.obj");
-	//shipModel = obj::loadModelFromFile("models/cyber.obj");
-	shipContext.initFromOBJ(shipModel);
+	ship = obj::loadModelFromFile("models/spaceship.obj");
+	shipContext.initFromOBJ(ship);
 
 	sphere = obj::loadModelFromFile("models/sphere.obj");
 	sphereContext.initFromOBJ(sphere);
@@ -373,7 +357,6 @@ void init()
 	cube = obj::loadModelFromFile("models/cube.obj");
 	cubeContext.initFromOBJ(cube);
 
-	//teslaTexture = Core::LoadTexture("textures/a.jpg");
 	earthTexture = Core::LoadTexture("textures/earth.png");
 	marsTexture = Core::LoadTexture("textures/mars.png");
 	jupiterTexture = Core::LoadTexture("textures/jupiter.png");
