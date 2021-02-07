@@ -71,7 +71,7 @@ glm::vec3 cameraPos = glm::vec3(-70, 0, 0);
 glm::vec3 cameraDir;
 
 obj::Model sphere;
-obj::Model shipModel;
+obj::Model ship;
 Core::RenderContext shipContext;
 glm::mat4 shipModelMatrix = glm::mat4(1.0f);
 Core::RenderContext sphereContext;
