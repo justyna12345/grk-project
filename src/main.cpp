@@ -249,7 +249,7 @@ void renderScene()
 
 	//ship
 	shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0.25, -0.15f, 0)) * 
-		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.10f));
+		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.05f));
 
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
