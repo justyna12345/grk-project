@@ -79,10 +79,11 @@ struct Bullet {
 	Core::RenderContext* context;
 	GLuint textureID;
 	glm::vec3 scaleVector;
-	//float age;
+	glm::vec3 dir;
+	float age;
 
 };
-std::vector<Bullet*> bullets;
+std::vector<std::shared_ptr<Bullet>> bullets;
 
 
 float cameraAngle = 0;
@@ -111,6 +112,9 @@ struct Light {
 std::vector<Light> lightCollector;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
+
+float timer = 0.0f;
+float delta = 0.0f;
 
 //struct Renderable {
 //	Core::RenderContext* context;
@@ -150,12 +154,14 @@ void keyboard(unsigned char key, int x, int y)
 
 
 void createBullet() {
-	Bullet* bullet = new Bullet();
-	bullet->bulletModelMatrix = shipModelMatrix;
-	bullet->velocityDiv = 0.10f;
+	auto bullet = std::make_shared<Bullet>();
+	bullet->bulletModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.15f, 0));
+	bullet->dir = cameraDir;
+	bullet->velocityDiv = 1.0f;
 	bullet->context = &sphereContext;
 	bullet->textureID= marsTexture;
-	bullet->scaleVector= glm::vec3(0.5f);
+	bullet->scaleVector= glm::vec3(0.05f);
+	bullet->age = 5;
 
 	bullets.emplace_back(bullet);
 }
@@ -267,7 +273,9 @@ void renderScene()
 
 	cameraMatrix = createCameraMatrix();
 	perspectiveMatrix = Core::createPerspectiveMatrix(0.01f, 1000.0f, frustumScale);
-	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
+
+	delta = glutGet(GLUT_ELAPSED_TIME) / 1000.f - timer;
+	timer = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
 	//sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -278,13 +286,13 @@ void renderScene()
 
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
-	sunModelMatrix = glm::rotate(time / 8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 40.0f)) * glm::rotate(time / 5, glm::vec3(0.0f, -0.1f, 0.0f)) *
+	sunModelMatrix = glm::rotate(timer / 8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 40.0f)) * glm::rotate(timer / 5, glm::vec3(0.0f, -0.1f, 0.0f)) *
 		glm::scale(glm::vec3(5.0f));
 
 	//comet
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
-	sunModelMatrix2 = glm::rotate(time / 3, glm::vec3(-0.8f, 0.4f, 0.0f)) *
+	sunModelMatrix2 = glm::rotate(timer / 3, glm::vec3(-0.8f, 0.4f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f, 0.0f, 70.0f)) * glm::scale(glm::vec3(0.7f));
 
 	glm::mat4 sunLight = sunModelMatrix;
@@ -325,20 +333,20 @@ void renderScene()
 
 	//creating planets matrixs
 	glm::mat4 sphereModelMatrix1 = glm::mat4(1.0f);
-	sphereModelMatrix1 = glm::rotate(time / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
+	sphereModelMatrix1 = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
 		glm::scale(glm::vec3(0.5f));
 
 	glm::mat4 sphereModelMatrix2 = glm::mat4(1.0f);
-	sphereModelMatrix2 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
+	sphereModelMatrix2 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
 		glm::scale(glm::vec3(0.7f));
 
 	//draw moon
 	glm::mat4 sphereModelMatrix3 = glm::mat4(1.0f);
-	sphereModelMatrix3 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) *
-		glm::rotate(time, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) *
-		glm::rotate(time / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
+	sphereModelMatrix3 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) *
+		glm::rotate(timer, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) *
+		glm::rotate(timer / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
 
 	//glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), marsTexture);
@@ -346,11 +354,20 @@ void renderScene()
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), erisTexture);
 
 	//draw bullet
-	for (int i = 0; i < bullets.size(); i++) {
-
-		bullets[i]->bulletModelMatrix *= glm::translate(cameraDir / bullets[i]->velocityDiv);
-		drawObjectTexture(programTexture, *bullets[i]->context, bullets[i]->bulletModelMatrix * glm::scale(bullets[i]->scaleVector), glm::vec3(1.0f, 0.3f, 0.3f), bullets[i]->textureID);
-
+	for (auto bulletit = bullets.begin(); bulletit != bullets.end();)
+	{
+		auto bullet = bulletit->get();
+		bullet->age -= delta;
+		if (bullet->age > 0.0f)
+		{
+			bullet->bulletModelMatrix *= glm::translate(bullet->dir / bullet->velocityDiv);
+			drawObjectTexture(programTexture, *bullet->context, bullet->bulletModelMatrix * glm::scale(bullet->scaleVector), glm::vec3(1.0f, 0.3f, 0.3f), bullet->textureID);
+			bulletit++;
+		}
+		else
+		{
+			bulletit = bullets.erase(bulletit);
+		}
 	}
 
 
