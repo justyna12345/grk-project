@@ -36,6 +36,24 @@
     <None Include="shaders\shader_4_sun.vert">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="shaders\shader_bloom.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_bloom.vert">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_skybox.vert">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_skybox.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_blur.vert">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_blur.frag">
+      <Filter>Shader Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Box.cpp">

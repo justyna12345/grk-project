@@ -1,5 +1,8 @@
 #version 430 core
 
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
+
 uniform vec3 objectColor;
 uniform vec3 cameraPos;
 
@@ -22,7 +25,9 @@ void main()
 
 	//fragColor += mix(texture, texture * diffuse + vec3(1) * specular, 0.9f) * lights[i].Color;
 
-	gl_FragColor = vec4(texture, 1.0f);
+	FragColor = vec4(texture * 3, 1.0f);
+    //float brightness = dot(FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    BrightColor = vec4(FragColor.rgb, 1.0);
 
 
 }
