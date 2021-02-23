@@ -243,13 +243,15 @@ void renderScene()
 
 	
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
-	//sphereModelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
+	sphereModelMatrix = glm::rotate(time / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
+		glm::scale(glm::vec3(0.5f));
 
 	glUseProgram(programTexture);
 
 	//ship
-	shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0.25, -0.15f, 0)) * 
-		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.10f));
+	shipModelMatrix = glm::translate(cameraPos + cameraDir * 2.0f + glm::vec3(0.25, -0.15f, 0)) * 
+		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.07f));
 
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
