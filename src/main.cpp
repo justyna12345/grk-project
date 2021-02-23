@@ -278,8 +278,8 @@ void renderScene()
 	timer = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
-	sphereModelMatrix = glm::rotate(time / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
+	sphereModelMatrix = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
 		glm::scale(glm::vec3(0.5f));
 
 	//ship
