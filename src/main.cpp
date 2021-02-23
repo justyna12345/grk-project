@@ -29,18 +29,37 @@ GLuint marsTexture;
 GLuint cometTexture;
 GLuint jupiterTexture;
 GLuint erisTexture;
+
+
 GLuint program;
 GLuint programShip;
 //GLuint programTexture1;
 GLuint programSun;
 GLuint programTexture;
 GLuint programSkybox;
+
+GLuint programBloom;
+GLuint programBlur;
+
+unsigned int hdrFBO;
+unsigned int colorBuffers[2];
+unsigned int pingpongFBO[2];
+unsigned int pingpongColorbuffers[2];
+int bloom = 0;
+float exposure = 1.0f;
+
+void startBloom();
+void drawBloom();
+void renderQuad();
+void createBuffers();
+
 Core::Shader_Loader shaderLoader;
 
 GLuint skyboxTexture;
 
 
 float frustumScale = 1.0f;
+int w, h;
 
 std::vector<std::string> faces
 {
@@ -60,10 +79,11 @@ struct Bullet {
 	Core::RenderContext* context;
 	GLuint textureID;
 	glm::vec3 scaleVector;
-	//float age;
+	glm::vec3 dir;
+	float age;
 
 };
-std::vector<Bullet*> bullets;
+std::vector<std::shared_ptr<Bullet>> bullets;
 
 
 float cameraAngle = 0;
@@ -93,6 +113,8 @@ std::vector<Light> lightCollector;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
+float timer = 0.0f;
+float delta = 0.0f;
 
 //struct Renderable {
 //	Core::RenderContext* context;
@@ -117,18 +139,29 @@ void keyboard(unsigned char key, int x, int y)
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
 	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	case 'b': bloom = true; break;
+	case 'n': bloom = false; break;
+	case 'o':
+			if (exposure > 0.0f)
+				exposure -= 0.01f;
+			else
+				exposure = 0.0f;
+			break;
+	case 'p': exposure += 0.01f; break;
 	}
 }
 
 
 
 void createBullet() {
-	Bullet* bullet = new Bullet();
-	bullet->bulletModelMatrix = shipModelMatrix;
-	bullet->velocityDiv = 4.0f;
+	auto bullet = std::make_shared<Bullet>();
+	bullet->bulletModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.15f, 0));
+	bullet->dir = cameraDir;
+	bullet->velocityDiv = 1.0f;
 	bullet->context = &sphereContext;
 	bullet->textureID= marsTexture;
-	bullet->scaleVector= glm::vec3(0.5f);
+	bullet->scaleVector= glm::vec3(0.05f);
+	bullet->age = 5;
 
 	bullets.emplace_back(bullet);
 }
@@ -213,55 +246,55 @@ void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 mo
 void drawSkybox(GLuint program, Core::RenderContext context, GLuint textureID) {
 	glUseProgram(program);
 
+	glDepthFunc(GL_LEQUAL);
+
 	glm::mat4 transformation = perspectiveMatrix * glm::mat4(glm::mat3(cameraMatrix));
 
 	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
 
-	glDepthMask(GL_FALSE);
 	glUniform1i(glGetUniformLocation(program, "skybox"), 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 	Core::DrawContext(context);
-	glDepthMask(GL_TRUE);
+
+	glDepthFunc(GL_LESS);
 	glUseProgram(0);
 }
 
 void renderScene()
 {
 
-	cameraMatrix = createCameraMatrix();
-	perspectiveMatrix = Core::createPerspectiveMatrix(0.01f, 1000.0f, frustumScale);
-	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
 
+	//tutaj ustawiamy buffer na ktorym bedziemy wszystko rysowac
+	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	drawSkybox(programSkybox, cubeContext, skyboxTexture);
+	cameraMatrix = createCameraMatrix();
+	perspectiveMatrix = Core::createPerspectiveMatrix(0.01f, 1000.0f, frustumScale);
 
-	glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 3.0f);
+	delta = glutGet(GLUT_ELAPSED_TIME) / 1000.f - timer;
+	timer = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
-	
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
 	sphereModelMatrix = glm::rotate(time / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
 		glm::scale(glm::vec3(0.5f));
 
-	glUseProgram(programTexture);
-
 	//ship
-	shipModelMatrix = glm::translate(cameraPos + cameraDir * 2.0f + glm::vec3(0.25, -0.15f, 0)) * 
-		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.07f));
+	shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.15f, 0)) * 
+		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.05f));
 
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
-	sunModelMatrix = glm::rotate(time / 8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 40.0f)) * glm::rotate(time / 5, glm::vec3(0.0f, -0.1f, 0.0f)) *
+	sunModelMatrix = glm::rotate(timer / 8, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 40.0f)) * glm::rotate(timer / 5, glm::vec3(0.0f, -0.1f, 0.0f)) *
 		glm::scale(glm::vec3(5.0f));
 
 	//comet
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
-	sunModelMatrix2 = glm::rotate(time / 3, glm::vec3(-0.8f, 0.4f, 0.0f)) *
+	sunModelMatrix2 = glm::rotate(timer / 3, glm::vec3(-0.8f, 0.4f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f, 0.0f, 70.0f)) * glm::scale(glm::vec3(0.7f));
 
 	glm::mat4 sunLight = sunModelMatrix;
@@ -275,6 +308,8 @@ void renderScene()
 	lightCollector[1].color = glm::vec3(0.3f, 0.3f, 0.9f);
 
 
+	glUseProgram(programTexture);
+
 	for (int i = 0; i < lightCollector.size(); i++) {
 		std::string pos = "lights[" + std::to_string(i) + "].Pos";
 		std::string color = "lights[" + std::to_string(i) + "].Color";
@@ -284,7 +319,6 @@ void renderScene()
 			lightCollector[i].color.z);
 	}
 
-	glUniform3f(glGetUniformLocation(programShip, "light_dir"), 2, 1, 0);
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 
@@ -299,43 +333,57 @@ void renderScene()
 	//draw Earth
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
 
-	//draw planets
+	//creating planets matrixs
 	glm::mat4 sphereModelMatrix1 = glm::mat4(1.0f);
-	sphereModelMatrix1 = glm::rotate(time / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
+	sphereModelMatrix1 = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
 		glm::scale(glm::vec3(0.5f));
 
 	glm::mat4 sphereModelMatrix2 = glm::mat4(1.0f);
-	sphereModelMatrix2 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(time / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
+	sphereModelMatrix2 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
 		glm::scale(glm::vec3(0.7f));
 
 	//draw moon
 	glm::mat4 sphereModelMatrix3 = glm::mat4(1.0f);
-	sphereModelMatrix3 = glm::rotate(time / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) *
-		glm::rotate(time, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) *
-		glm::rotate(time / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
+	sphereModelMatrix3 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) *
+		glm::rotate(timer, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) *
+		glm::rotate(timer / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
 
-	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	//glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), marsTexture);
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix2, glm::vec3(1.0f, 0.3f, 0.3f), jupiterTexture);
 	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), erisTexture);
+
+	//draw bullet
+	for (auto bulletit = bullets.begin(); bulletit != bullets.end();)
+	{
+		auto bullet = bulletit->get();
+		bullet->age -= delta;
+		if (bullet->age > 0.0f)
+		{
+			bullet->bulletModelMatrix *= glm::translate(bullet->dir / bullet->velocityDiv);
+			drawObjectTexture(programTexture, *bullet->context, bullet->bulletModelMatrix * glm::scale(bullet->scaleVector), glm::vec3(1.0f, 0.3f, 0.3f), bullet->textureID);
+			bulletit++;
+		}
+		else
+		{
+			bulletit = bullets.erase(bulletit);
+		}
+	}
+
 
 	glUseProgram(programSun);
 
 	//draw sun and comet
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix, lightColor, sunTexture);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, lightColor, cometTexture);
 
+	drawSkybox(programSkybox, cubeContext, skyboxTexture);
 
-	//draw bullet
-	for (int i = 0; i < bullets.size(); i++) {
-		glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-		bullets[i]->bulletModelMatrix*=glm::translate(cameraDir/bullets[i]->velocityDiv);
-		drawObjectTexture(program, *bullets[i]->context, bullets[i]->bulletModelMatrix * glm::scale(bullets[i]->scaleVector), glm::vec3(1.0f, 0.3f, 0.3f), bullets[i]->textureID);
-
-	}
+	drawBloom();
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -344,11 +392,13 @@ void renderScene()
 void init()
 {
 	glEnable(GL_DEPTH_TEST);
-	programShip = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
+	//programShip = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
+	//program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
-	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
 	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
+
+	startBloom();
 
 	ship = obj::loadModelFromFile("models/spaceship.obj");
 	shipContext.initFromOBJ(ship);
@@ -397,14 +447,19 @@ void idle()
 void onReshape(int width, int height) {
 	frustumScale = (float)width / (float)height;
 	glViewport(0, 0, width, height);
+	w = width;
+	h = height;
+	//createBuffers();
 }
 
 int main(int argc, char** argv)
 {
+	w = 1240;
+	h = 720;
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(200, 300);
-	glutInitWindowSize(1240, 720);
+	glutInitWindowSize(w, h);
 	glutCreateWindow("OpenGL Pierwszy Program");
 	glewInit();
 
@@ -420,4 +475,144 @@ int main(int argc, char** argv)
 	shutdown();
 
 	return 0;
+}
+
+void startBloom()
+{
+	programBlur = shaderLoader.CreateProgram("shaders/shader_blur.vert", "shaders/shader_blur.frag");
+	programBloom = shaderLoader.CreateProgram("shaders/shader_bloom.vert", "shaders/shader_bloom.frag");
+
+	//hdr to taki normalny framebuffer, na ktorm bedziem rysowac wszystko
+	// configure (floating point) framebuffers
+// ---------------------------------------
+	glGenFramebuffers(1, &hdrFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+	// create 2 floating point color buffers (1 for normal rendering, other for brightness threshold values)
+
+	createBuffers();
+
+	glUseProgram(programBlur);
+	glUniform1i(glGetUniformLocation(programBlur, "image"), 0);
+	glUseProgram(programBloom);
+	glUniform1i(glGetUniformLocation(programBloom, "scene"), 0);
+	glUniform1i(glGetUniformLocation(programBloom, "bloomBlur"), 1);
+}
+void createBuffers()
+{
+	glGenTextures(2, colorBuffers);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		// attach texture to framebuffer
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0);
+	}
+	// create and attach depth buffer (renderbuffer) potrzebujemy go zeby moc obslugiwac glebokosc na bufferze
+	unsigned int rboDepth;
+	glGenRenderbuffers(1, &rboDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+
+	// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
+
+	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
+	// finally check if framebuffer is complete
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// ping-pong-framebuffer for blurring
+	glGenFramebuffers(2, pingpongFBO);
+	glGenTextures(2, pingpongColorbuffers);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+		glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0);
+		// also check if framebuffers are complete (no need for depth buffer)
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			std::cout << "Framebuffer not complete!" << std::endl;
+	}
+}
+void drawBloom()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// 2. blur bright fragments with two-pass Gaussian Blur 
+	// --------------------------------------------------
+	bool horizontal = true, first_iteration = true;
+	unsigned int amount = 10;
+	glUseProgram(programBlur);
+	for (unsigned int i = 0; i < amount; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+		glUniform1i(glGetUniformLocation(programBlur, "horizontal"), horizontal);
+		glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);  // bind texture of other framebuffer (or scene if first iteration)
+		renderQuad();
+		horizontal = !horizontal;
+		if (first_iteration)
+			first_iteration = false;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// 3. now render floating point color buffer to 2D quad and tonemap HDR colors to default framebuffer's (clamped) color range
+	// --------------------------------------------------------------------------------------------------------------------------
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(programBloom);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+	//tu mozna zmienic potem
+	glUniform1i(glGetUniformLocation(programBloom, "bloom"), bloom);
+	glUniform1f(glGetUniformLocation(programBloom, "exposure"), exposure);
+	renderQuad();
+
+	//std::cout << "bloom: " << (bloom ? "on" : "off") << "| exposure: " << exposure << std::endl;
+
+	// glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+	// -------------------------------------------------------------------------------
+}
+
+// renderQuad() renders a 1x1 XY quad in NDC
+// -----------------------------------------
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+	if (quadVAO == 0)
+	{
+		float quadVertices[] = {
+			// positions        // texture Coords
+			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		};
+		// setup plane VAO
+		glGenVertexArrays(1, &quadVAO);
+		glGenBuffers(1, &quadVBO);
+		glBindVertexArray(quadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	}
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
 }
