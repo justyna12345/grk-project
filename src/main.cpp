@@ -57,6 +57,9 @@ Core::Shader_Loader shaderLoader;
 
 GLuint skyboxTexture;
 
+glm::vec2 mousePoint = glm::vec2(0);
+static const float sensitivity = 0.00000001;
+
 
 float frustumScale = 1.0f;
 int w, h;
@@ -116,6 +119,12 @@ glm::mat4 cameraMatrix, perspectiveMatrix;
 float timer = 0.0f;
 float delta = 0.0f;
 
+float changeCameraAngle = 0; 
+float step = 0.1f; // wartosc hamowania obrotu
+float angleSpeed = 0.3f; //wartosc przyspieszenia obrotu
+float speedlimit = 1.5; // max predkosc obrotu
+bool breaking = false; //czy hamowanie ma byc aktywne
+
 //struct Renderable {
 //	Core::RenderContext* context;
 //	glm::mat4 modelMatrix;
@@ -125,14 +134,23 @@ float delta = 0.0f;
 //
 //std::vector<Renderable*> redelables;
 //int rendelableSize = 0;
+
 void keyboard(unsigned char key, int x, int y)
 {
-	float angleSpeed = 0.1f;
-	float moveSpeed = 0.7f;
+		float moveSpeed = 0.7f;
+
 	switch (key)
 	{
-	case 'z': cameraAngle -= angleSpeed; break;
-	case 'x': cameraAngle += angleSpeed; break;
+	/*case 'z':
+		if (changeCameraAngle > -speedlimit) {
+			changeCameraAngle -= angleSpeed;
+		}
+		break;
+	case 'x': 
+		if (changeCameraAngle < speedlimit) {
+		changeCameraAngle += angleSpeed;
+		}
+		break;*/
 	case 'w': cameraPos += cameraDir * moveSpeed; break;
 	case 's': cameraPos -= cameraDir * moveSpeed; break;
 	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
@@ -142,15 +160,34 @@ void keyboard(unsigned char key, int x, int y)
 	case 'b': bloom = true; break;
 	case 'n': bloom = false; break;
 	case 'o':
-			if (exposure > 0.0f)
-				exposure -= 0.01f;
-			else
-				exposure = 0.0f;
-			break;
+		if (exposure > 0.0f)
+			exposure -= 0.01f;
+		else
+			exposure = 0.0f;
+		break;
 	case 'p': exposure += 0.01f; break;
 	}
 }
 
+
+void mouseMovement(int x, int y) {
+
+	if(x > 1000) {
+		breaking = false;
+		if (changeCameraAngle < speedlimit ) {
+			changeCameraAngle += angleSpeed;
+		}
+	}
+	if(x < 320) {
+		breaking = false;
+		if (changeCameraAngle > -speedlimit) {
+			changeCameraAngle -= angleSpeed;
+		}
+	}
+	if (x >= 520 && x <= 720) {
+		breaking = true;
+	}
+}
 
 
 void createBullet() {
@@ -159,8 +196,8 @@ void createBullet() {
 	bullet->dir = cameraDir;
 	bullet->velocityDiv = 1.0f;
 	bullet->context = &sphereContext;
-	bullet->textureID= marsTexture;
-	bullet->scaleVector= glm::vec3(0.05f);
+	bullet->textureID = marsTexture;
+	bullet->scaleVector = glm::vec3(0.05f);
 	bullet->age = 5;
 
 	bullets.emplace_back(bullet);
@@ -177,6 +214,12 @@ glm::mat4 createCameraMatrix()
 {
 	// Obliczanie kierunku patrzenia kamery (w plaszczyznie x-z) przy uzyciu zmiennej cameraAngle kontrolowanej przez klawisze.
 	cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
+
+	glm::quat x = glm::angleAxis(mousePoint.x, glm::vec3(0, 1, 0));
+	glm::quat y = glm::angleAxis(mousePoint.y, glm::vec3(1, 0, 0));
+
+	mousePoint = glm::vec2(0);
+
 	glm::vec3 up = glm::vec3(0, 1, 0);
 
 	return Core::createViewMatrix(cameraPos, cameraDir, up);
@@ -261,6 +304,7 @@ void drawSkybox(GLuint program, Core::RenderContext context, GLuint textureID) {
 	glUseProgram(0);
 }
 
+
 void renderScene()
 {
 
@@ -277,13 +321,29 @@ void renderScene()
 	delta = glutGet(GLUT_ELAPSED_TIME) / 1000.f - timer;
 	timer = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
+	cameraAngle = (cameraAngle + changeCameraAngle) * delta + cameraAngle * (1 - delta); // plynniejszy obrot z i x
+
+	if (breaking == true) {
+		if (changeCameraAngle > 0) { // plynniejsze hamowanie
+			changeCameraAngle -= step;
+		}
+		else {
+			changeCameraAngle += step;
+		}
+
+		if (abs(changeCameraAngle - step) < step) {
+			changeCameraAngle = 0; //pelne zatrzymanie obrotu
+		}
+	}
+
+
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
 	sphereModelMatrix = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
 		glm::scale(glm::vec3(0.5f));
 
 	//ship
-	shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.15f, 0)) * 
+	shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.15f, 0)) *
 		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.05f));
 
 	//sun
@@ -466,6 +526,7 @@ int main(int argc, char** argv)
 	init();
 	glutKeyboardFunc(keyboard);
 	glutMouseFunc(mouseClick);
+	glutPassiveMotionFunc(mouseMovement);
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
 
