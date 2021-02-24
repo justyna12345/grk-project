@@ -33,10 +33,19 @@ GLuint erisTexture;
 
 GLuint program;
 GLuint programShip;
-//GLuint programTexture1;
 GLuint programSun;
 GLuint programTexture;
 GLuint programSkybox;
+GLuint programParticles;
+GLuint programParticlesTex;
+
+GLuint billboard_vertex_buffer;
+GLuint particles_position_buffer;
+GLuint particles_color_buffer;
+
+double lastTime;
+
+const int MaxParticles = 10000;
 
 GLuint programBloom;
 GLuint programBlur;
@@ -87,6 +96,9 @@ struct Bullet {
 
 };
 std::vector<std::shared_ptr<Bullet>> bullets;
+static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
+static GLubyte* g_particule_color_data = new GLubyte[MaxParticles * 4];
+glm::vec3 jetParticlesDir = glm::vec3(0, 0, -1);
 
 
 float cameraAngle = 0;
@@ -102,8 +114,7 @@ Core::RenderContext sphereContext;
 obj::Model cube;
 Core::RenderContext cubeContext;
 
-//obj::Model ship;
-//Core::RenderContext shipContext;
+Core::RenderContext particleContext;
 
 glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
@@ -124,7 +135,7 @@ float step = 0.1f; // wartosc hamowania obrotu
 float angleSpeed = 0.3f; //wartosc przyspieszenia obrotu
 float speedlimit = 1.5; // max predkosc obrotu
 bool breaking = false; //czy hamowanie ma byc aktywne
-
+bool activeBloom = false;
 //struct Renderable {
 //	Core::RenderContext* context;
 //	glm::mat4 modelMatrix;
@@ -155,10 +166,9 @@ void keyboard(unsigned char key, int x, int y)
 	case 's': cameraPos -= cameraDir * moveSpeed; break;
 	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
-	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
-	case 'b': bloom = true; break;
-	case 'n': bloom = false; break;
+	/*case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;*/
+	case 'b': bloom = !activeBloom; activeBloom = !activeBloom; break;
 	case 'o':
 		if (exposure > 0.0f)
 			exposure -= 0.01f;
@@ -171,14 +181,14 @@ void keyboard(unsigned char key, int x, int y)
 
 
 void mouseMovement(int x, int y) {
-
-	if(x > 1000) {
+	float moveSpeed = 0.7f;
+	if(x > 1100) {
 		breaking = false;
 		if (changeCameraAngle < speedlimit ) {
 			changeCameraAngle += angleSpeed;
 		}
 	}
-	if(x < 320) {
+	if(x < 220) {
 		breaking = false;
 		if (changeCameraAngle > -speedlimit) {
 			changeCameraAngle -= angleSpeed;
@@ -187,6 +197,13 @@ void mouseMovement(int x, int y) {
 	if (x >= 520 && x <= 720) {
 		breaking = true;
 	}
+	if (y <= 320) {
+		cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed;
+	}
+	if (y >= 600) {
+		cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed;
+	}
+	
 }
 
 
@@ -223,6 +240,44 @@ glm::mat4 createCameraMatrix()
 	glm::vec3 up = glm::vec3(0, 1, 0);
 
 	return Core::createViewMatrix(cameraPos, cameraDir, up);
+}
+struct Particle {
+	glm::vec3 pos, speed;
+	unsigned char r, g, b, a; // Color
+	float size, angle, weight;
+	float life; // Remaining life of the particle. if <0 : dead and unused.
+	float cameradistance; // *Squared* distance to the camera. if dead : -1.0f
+
+	bool operator<(const Particle& that) const {
+		// Sort in reverse order : far particles drawn first.
+		return this->cameradistance > that.cameradistance;
+	}
+};
+
+Particle ParticlesContainer[MaxParticles];
+int LastUsedParticle = 0;
+
+int FindUnusedParticle() {
+
+	for (int i = LastUsedParticle; i < MaxParticles; i++) {
+		if (ParticlesContainer[i].life < 0) {
+			LastUsedParticle = i;
+			return i;
+		}
+	}
+
+	for (int i = 0; i < LastUsedParticle; i++) {
+		if (ParticlesContainer[i].life < 0) {
+			LastUsedParticle = i;
+			return i;
+		}
+	}
+
+	return 0; // All particles are taken, override the first one
+}
+
+void SortParticles() {
+	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
 }
 
 void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatrix, glm::vec3 color)
@@ -286,6 +341,161 @@ void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 mo
 	Core::DrawContext(context);
 }
 
+void updateParticlesBuffers(int ParticlesCount, glm::mat4 ViewProjectionMatrix)
+{
+	// Update the buffers that OpenGL uses for rendering.
+	// There are much more sophisticated means to stream data from the CPU to the GPU,
+	// but this is outside the scope of this tutorial.
+	// http://www.opengl.org/wiki/Buffer_Object_Streaming
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
+	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+	glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLfloat) * 4, g_particule_position_size_data); // prypisanie nowych wartosci w vertex array
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glUseProgram(programParticles);
+
+	glUniformMatrix4fv(glGetUniformLocation(programParticles, "VP"), 1, GL_FALSE, (float*)&ViewProjectionMatrix);
+
+	// 1rst attribute buffer : vertices
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, billboard_vertex_buffer);
+	glVertexAttribPointer(
+		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		(void*)0            // array buffer offset
+	);
+
+	// 2nd attribute buffer : positions of particles' centers
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
+	glVertexAttribPointer(
+		1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+		4,                                // size : x + y + z + size => 4
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+	);
+
+	// These functions are specific to glDrawArrays*Instanced*.
+	// The first parameter is the attribute buffer we're talking about.
+	// The second parameter is the "rate at which generic vertex attributes advance when rendering multiple instances"
+	// http://www.opengl.org/sdk/docs/man/xhtml/glVertexAttribDivisor.xml
+	glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
+	glVertexAttribDivisor(1, 1); // positions : one per quad (its center)                 -> 1                               -> 1
+
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, ParticlesCount);
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+}
+
+void drawParticles(glm::mat4 shipModelMatrix)
+{
+	// Clear the screen
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	double currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+	double deltaP = currentTime - lastTime;
+	lastTime = currentTime;
+
+	glm::mat4 ViewProjectionMatrix = perspectiveMatrix * cameraMatrix;// *shipModelMatrix;
+
+	// Generate 10 new particule each millisecond,
+	// but limit this to 16 ms (60 fps), or if you have 1 long frame (1sec),
+	// newparticles will be huge and the next frame even longer.
+	int newparticles = (int)(deltaP * 10000.0);
+	if (newparticles > (int)(0.016f * 10000.0))
+		newparticles = (int)(0.016f * 10000.0);
+
+	for (int i = 0; i < newparticles; i++) {
+		int particleIndex = FindUnusedParticle();
+		ParticlesContainer[particleIndex].life = 1.0f; // This particle will live 5 seconds.
+		ParticlesContainer[particleIndex].pos = glm::vec3((shipModelMatrix * glm::vec4(0, 0, -0.5, 1)));
+
+		float spread = 1.5f;
+		glm::vec3 maindir = -cameraDir;
+		// Very bad way to generate a random direction;
+		// See for instance http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution instead,
+		// combined with some user-controlled parameters (main direction, spread, etc)
+		glm::vec3 randomdir = glm::vec3(
+			(rand() % 2000 - 1000.0f) / 1000.0f,
+			(rand() % 2000 - 1000.0f) / 1000.0f,
+			(rand() % 2000 - 1000.0f) / 1000.0f
+		);
+
+		ParticlesContainer[particleIndex].speed = maindir + randomdir * spread;
+
+		ParticlesContainer[particleIndex].size = ((rand() % 1000) / 2000.0f + 0.1f) * 0.005f;
+
+	}
+
+
+
+	// Simulate all particles
+	int ParticlesCount = 0;
+	for (int i = 0; i < MaxParticles; i++) {
+
+		Particle& p = ParticlesContainer[i]; // shortcut
+
+		if (p.life > 0.0f) {
+
+			// Decrease life
+			p.life -= deltaP;
+			if (p.life > 0.0f) {
+
+				// Simulate simple physics : gravity only, no collisions
+				p.speed += glm::vec3(0.0f, 0.f, -10.0f) * (float)deltaP * 0.5f;
+				p.pos += p.speed * (float)deltaP;
+				p.cameradistance = glm::length2(p.pos - cameraPos);
+				ParticlesContainer[i].pos += glm::vec3(0.0f, 0.0f, 0.0f) * (float)deltaP;
+
+				// Fill the GPU buffer
+				// vertex array update
+				g_particule_position_size_data[4 * ParticlesCount + 0] = p.pos.x;
+				g_particule_position_size_data[4 * ParticlesCount + 1] = p.pos.y;
+				g_particule_position_size_data[4 * ParticlesCount + 2] = p.pos.z;
+
+				g_particule_position_size_data[4 * ParticlesCount + 3] = p.size;
+
+			}
+			else {
+				// Particles that just died will be put at the end of the buffer in SortParticles();
+				p.cameradistance = -1.0f;
+			}
+
+			ParticlesCount++;
+
+		}
+
+	}
+
+	SortParticles();
+
+	//updateParticlesBuffers(ParticlesCount, ViewProjectionMatrix);
+
+
+	glUseProgram(programParticles);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glm::mat4 modelMatrix = glm::mat4(1);
+	glm::vec4 t = glm::vec4(0);
+	glUniform3f(glGetUniformLocation(programParticles, "particleColor"), 0.0f, 0.0f, 0.0f);
+	glUniformMatrix4fv(glGetUniformLocation(programParticles, "VP"), 1, GL_FALSE, (float*)&ViewProjectionMatrix);
+
+	//Core::DrawContextInstanced(particleContext, ParticlesCount, MaxParticles, g_particule_position_size_data);
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, ParticlesCount);
+
+	glUseProgram(0);
+}
+
 void drawSkybox(GLuint program, Core::RenderContext context, GLuint textureID) {
 	glUseProgram(program);
 
@@ -344,7 +554,7 @@ void renderScene()
 
 	//ship
 	shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.15f, 0)) *
-		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.05f));
+		glm::rotate(-cameraAngle + glm::radians(0.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.03f));
 
 	//sun
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
@@ -445,6 +655,8 @@ void renderScene()
 
 	drawBloom();
 
+	drawParticles(shipModelMatrix);
+
 	glUseProgram(0);
 	glutSwapBuffers();
 }
@@ -457,6 +669,7 @@ void init()
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
 	programTexture = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
+	programParticles = shaderLoader.CreateProgram("shaders/shader_particles.vert", "shaders/shader_particles.frag");
 
 	startBloom();
 
@@ -492,7 +705,33 @@ void init()
 	l3.position = glm::vec3(0.0f);
 	l3.color = glm::vec3(1.0f, 0.0f, 0.0f);
 	lightCollector.push_back(l3);
-}
+
+
+	lastTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+
+	for (int i = 0; i < MaxParticles; i++) {
+		ParticlesContainer[i].life = -1.0f;
+		ParticlesContainer[i].cameradistance = -1.0f;
+	}
+
+	static const GLfloat g_vertex_buffer_data[] =
+	{
+			 -0.5f, -0.5f, 0.0f,
+			  0.5f, -0.5f, 0.0f,
+			 -0.5f,  0.5f, 0.0f,
+			  0.5f,  0.5f, 0.0f,
+	};
+	/*
+	printf("%i", sphereContextSize);*/
+
+	glGenBuffers(1, &billboard_vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, billboard_vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &particles_position_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
+	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+	}
 
 void shutdown()
 {
@@ -520,7 +759,7 @@ int main(int argc, char** argv)
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(200, 300);
 	glutInitWindowSize(w, h);
-	glutCreateWindow("OpenGL Pierwszy Program");
+	glutCreateWindow("Space Flight");
 	glewInit();
 
 	init();
