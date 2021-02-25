@@ -153,7 +153,7 @@ void keyboard(unsigned char key, int x, int y)
 
 	switch (key)
 	{
-	/*case 'z':
+	case 'z':
 		if (changeCameraAngle > -speedlimit) {
 			changeCameraAngle -= angleSpeed;
 		}
@@ -162,13 +162,13 @@ void keyboard(unsigned char key, int x, int y)
 		if (changeCameraAngle < speedlimit) {
 		changeCameraAngle += angleSpeed;
 		}
-		break;*/
+		break;
 	case 'w': cameraPos += cameraDir * moveSpeed; break;
 	case 's': cameraPos -= cameraDir * moveSpeed; break;
 	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	/*case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
-	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;*/
+	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
 	case 'b': bloom = !activeBloom; activeBloom = !activeBloom; break;
 	case 'o':
 		if (exposure > 0.0f)
@@ -183,7 +183,7 @@ void keyboard(unsigned char key, int x, int y)
 
 void mouseMovement(int x, int y) {
 	float moveSpeed = 0.7f;
-	if(x > 1100) {
+	/*if(x > 1100) {
 		breaking = false;
 		if (changeCameraAngle < speedlimit ) {
 			changeCameraAngle += angleSpeed;
@@ -203,7 +203,7 @@ void mouseMovement(int x, int y) {
 	}
 	if (y >= 600) {
 		cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed;
-	}
+	}*/
 	
 }
 
@@ -634,7 +634,9 @@ void renderScene()
 	{
 		auto bullet = bulletit->get();
 		bullet->age -= delta;
-		if (glm::distance(bullet->position, glm::vec3(0.0f, 0.0f, 0.0f)) < 0.05f + 0.5f)
+		//printf("bullet: %f \n", (bullet->position+cameraPos)[0]);
+		//printf("bullet: %f \n", bullet->bulletModelMatrix);
+		if (glm::distance(bullet->position+cameraPos+glm::vec3(0.0f,-0.15f,0.0f), glm::vec3(0.0f, 0.0f, 0.0f)) < 0.05f + 0.5f)
 		{
 
 			bulletit = bullets.erase(bulletit);
