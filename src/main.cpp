@@ -47,6 +47,7 @@ unsigned int pingpongFBO[2];
 unsigned int pingpongColorbuffers[2];
 int bloom = 0;
 float exposure = 1.0f;
+bool earthDead = false;
 
 void startBloom();
 void drawBloom();
@@ -193,7 +194,7 @@ void mouseMovement(int x, int y) {
 void createBullet() {
 	auto bullet = std::make_shared<Bullet>();
 	bullet->bulletModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.15f, 0));
-	bullet->dir = cameraDir;
+	bullet->dir = cameraDir/100;
 	bullet->velocityDiv = 1.0f;
 	bullet->context = &sphereContext;
 	bullet->textureID = marsTexture;
@@ -336,7 +337,7 @@ void renderScene()
 		}
 	}
 
-
+	//earth
 	glm::mat4 sphereModelMatrix = glm::mat4(1.0f);
 	sphereModelMatrix = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
@@ -391,7 +392,10 @@ void renderScene()
 	//drawObjectTexture(programTexture1, shipContext, shipModelMatrix1, glm::vec3(0.6f), teslaTexture);
 
 	//draw Earth
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
+	if (earthDead == false)
+	{
+		drawObjectTexture(programTexture, sphereContext, sphereModelMatrix, glm::vec3(1.0f, 0.3f, 0.3f), earthTexture);
+	}
 
 	//creating planets matrixs
 	glm::mat4 sphereModelMatrix1 = glm::mat4(1.0f);
@@ -420,9 +424,16 @@ void renderScene()
 	{
 		auto bullet = bulletit->get();
 		bullet->age -= delta;
-		if (bullet->age > 0.0f)
+		if (glm::distance(bullet->position, glm::vec3(0.0f, 0.0f, 0.0f)) < 0.05f + 0.5f)
+		{
+
+			bulletit = bullets.erase(bulletit);
+			earthDead = true;
+		}
+		else if (bullet->age > 0.0f)
 		{
 			bullet->bulletModelMatrix *= glm::translate(bullet->dir / bullet->velocityDiv);
+			bullet->position += bullet->dir;
 			drawObjectTexture(programTexture, *bullet->context, bullet->bulletModelMatrix * glm::scale(bullet->scaleVector), glm::vec3(1.0f, 0.3f, 0.3f), bullet->textureID);
 			bulletit++;
 		}
