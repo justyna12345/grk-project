@@ -57,6 +57,9 @@ unsigned int pingpongColorbuffers[2];
 int bloom = 0;
 float exposure = 1.0f;
 bool earthDead = false;
+bool marsDead = false;
+bool jupiterDead = false;
+bool erisDead = false;
 
 void startBloom();
 void drawBloom();
@@ -211,11 +214,11 @@ void mouseMovement(int x, int y) {
 void createBullet() {
 	auto bullet = std::make_shared<Bullet>();
 	bullet->bulletModelMatrix = glm::translate(cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.15f, 0));
-	bullet->dir = cameraDir/100;
+	bullet->dir = cameraDir/10;
 	bullet->velocityDiv = 1.0f;
 	bullet->context = &sphereContext;
-	bullet->textureID = marsTexture;
-	bullet->scaleVector = glm::vec3(0.05f);
+	bullet->textureID = erisTexture;
+	bullet->scaleVector = glm::vec3(0.02f);
 	bullet->age = 5;
 
 	bullets.emplace_back(bullet);
@@ -625,20 +628,35 @@ void renderScene()
 		glm::rotate(timer / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
 
 	//glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), marsTexture);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix2, glm::vec3(1.0f, 0.3f, 0.3f), jupiterTexture);
-	drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), erisTexture);
+	if (marsDead == false)
+	{
+		drawObjectTexture(programTexture, sphereContext, sphereModelMatrix1, glm::vec3(1.0f, 0.3f, 0.3f), marsTexture);
+	}
+	if (jupiterDead == false)
+	{
+		drawObjectTexture(programTexture, sphereContext, sphereModelMatrix2, glm::vec3(1.0f, 0.3f, 0.3f), jupiterTexture);
+	}
+	if (erisDead == false)
+	{
+		drawObjectTexture(programTexture, sphereContext, sphereModelMatrix3, glm::vec3(1.0f, 0.3f, 0.3f), erisTexture);
+	}	
 
 	//draw bullet
 	for (auto bulletit = bullets.begin(); bulletit != bullets.end();)
 	{
 		auto bullet = bulletit->get();
 		bullet->age -= delta;
-		//printf("bullet: %f \n", (bullet->position+cameraPos)[0]);
+		//glm::vec3 basic = glm::vec3(0.0f);
+		//basic = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * basic;
+		//printf("mars: %s \n", glm::to_string(basic));
 		//printf("bullet: %f \n", bullet->bulletModelMatrix);
-		if (glm::distance(bullet->position+cameraPos+glm::vec3(0.0f,-0.15f,0.0f), glm::vec3(0.0f, 0.0f, 0.0f)) < 0.05f + 0.5f)
+		if (glm::distance(bullet->position+cameraPos+glm::vec3(0.0f,-0.15f,0.0f), glm::vec3(0.0f, 0.0f, 0.0f)) < 0.02f + 0.5f)
 		{
-
+			bulletit = bullets.erase(bulletit);
+			earthDead = true;
+		}
+		else if (glm::distance(bullet->position + cameraPos + glm::vec3(0.0f, -0.15f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)) < 0.02f + 0.5f)
+		{
 			bulletit = bullets.erase(bulletit);
 			earthDead = true;
 		}
