@@ -19,10 +19,12 @@
     <None Include="shaders\shader_blur.vert" />
     <None Include="shaders\shader_color.frag" />
     <None Include="shaders\shader_color.vert" />
+    <None Include="shaders\shader_particles.frag" />
     <None Include="shaders\shader_skybox.frag" />
     <None Include="shaders\shader_skybox.vert" />
     <None Include="shaders\shader_tex.frag" />
     <None Include="shaders\shader_tex.vert" />
+    <None Include="shader_particles.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Box.cpp" />
