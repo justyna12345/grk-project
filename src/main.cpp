@@ -127,7 +127,12 @@ struct Light {
 	glm::vec3 color;
 };
 
+/*struct Planet {
+	glm::vec3 position;
+};*/
+
 std::vector<Light> lightCollector;
+//std::vector<Planet> planetCollector;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
@@ -170,8 +175,8 @@ void keyboard(unsigned char key, int x, int y)
 	case 's': cameraPos -= cameraDir * moveSpeed; break;
 	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
-	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	//case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	//case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
 	case 'b': bloom = !activeBloom; activeBloom = !activeBloom; break;
 	case 'o':
 		if (exposure > 0.0f)
@@ -186,7 +191,7 @@ void keyboard(unsigned char key, int x, int y)
 
 void mouseMovement(int x, int y) {
 	float moveSpeed = 0.7f;
-	/*if(x > 1100) {
+	if(x > 1100) {
 		breaking = false;
 		if (changeCameraAngle < speedlimit ) {
 			changeCameraAngle += angleSpeed;
@@ -206,7 +211,7 @@ void mouseMovement(int x, int y) {
 	}
 	if (y >= 600) {
 		cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed;
-	}*/
+	}
 	
 }
 
@@ -595,7 +600,6 @@ void renderScene()
 
 	glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-
 	//draw Ship
 	drawObject(programTexture, shipContext, shipModelMatrix, glm::vec3(0.1f));
 	//glUniform3f(glGetUniformLocation(programTexture1, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
@@ -611,21 +615,37 @@ void renderScene()
 	}
 
 	//creating planets matrixs
+	//mars
 	glm::mat4 sphereModelMatrix1 = glm::mat4(1.0f);
 	sphereModelMatrix1 = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
 		glm::scale(glm::vec3(0.5f));
 
+	//jupiter
+	//glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f))
 	glm::mat4 sphereModelMatrix2 = glm::mat4(1.0f);
-	sphereModelMatrix2 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
+	sphereModelMatrix2 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
 		glm::scale(glm::vec3(0.7f));
 
-	//draw moon
+	//create moon
 	glm::mat4 sphereModelMatrix3 = glm::mat4(1.0f);
 	sphereModelMatrix3 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) *
 		glm::rotate(timer, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) *
 		glm::rotate(timer / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
+
+	glm::mat4 marsPos = sphereModelMatrix1;
+	glm::mat4 jupiterPos = sphereModelMatrix2;
+	glm::mat4 erisPos = sphereModelMatrix3;
+
+	//planetCollector[0].position = glm::vec3(marsPos[3][0], marsPos[3][1], marsPos[3][2]);
+	//planetCollector[1].position = glm::vec3(jupiterPos[3][0], jupiterPos[3][1], jupiterPos[3][2]);
+	//planetCollector[2].position = glm::vec3(erisPos[3][0], erisPos[3][1], erisPos[3][2]);
+
+	/*for (int i = 0; i < planetCollector.size(); i++) {
+		std::string pos = "planets[" + std::to_string(i) + "].Pos";
+		glUniform3f(glGetUniformLocation(programTexture, pos.c_str()), planetCollector[i].position.x, planetCollector[i].position.y,
+			planetCollector[i].position.z);
+	}*/
 
 	//glUniform3f(glGetUniformLocation(programTexture, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	if (marsDead == false)
@@ -650,15 +670,26 @@ void renderScene()
 		//basic = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * basic;
 		//printf("mars: %s \n", glm::to_string(basic));
 		//printf("bullet: %f \n", bullet->bulletModelMatrix);
+		//printf("slonce: %f \n", lightCollector[0].position[2]);
 		if (glm::distance(bullet->position+cameraPos+glm::vec3(0.0f,-0.15f,0.0f), glm::vec3(0.0f, 0.0f, 0.0f)) < 0.02f + 0.5f)
 		{
 			bulletit = bullets.erase(bulletit);
 			earthDead = true;
 		}
-		else if (glm::distance(bullet->position + cameraPos + glm::vec3(0.0f, -0.15f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f)) < 0.02f + 0.5f)
+		else if (glm::distance(bullet->position + cameraPos + glm::vec3(0.0f, -0.15f, 0.0f), glm::vec3(marsPos[3][0], marsPos[3][1], marsPos[3][2])) < 0.02f + 5.0f)
 		{
 			bulletit = bullets.erase(bulletit);
-			earthDead = true;
+			marsDead = true;
+		}
+		else if (glm::distance(bullet->position + cameraPos + glm::vec3(0.0f, -0.15f, 0.0f), glm::vec3(jupiterPos[3][0], jupiterPos[3][1], jupiterPos[3][2])) < 0.02f + 0.7f)
+		{
+			bulletit = bullets.erase(bulletit);
+			jupiterDead = true;
+		}
+		else if (glm::distance(bullet->position + cameraPos + glm::vec3(0.0f, -0.15f, 0.0f), glm::vec3(erisPos[3][0], erisPos[3][1], erisPos[3][2])) < 0.02f + 0.3f)
+		{
+			bulletit = bullets.erase(bulletit);
+			erisDead = true;
 		}
 		else if (bullet->age > 0.0f)
 		{
@@ -736,6 +767,18 @@ void init()
 	l3.position = glm::vec3(0.0f);
 	l3.color = glm::vec3(1.0f, 0.0f, 0.0f);
 	lightCollector.push_back(l3);
+
+	/*Planet p1;
+	p1.position = glm::vec3(0.0f);
+	planetCollector.push_back(p1);
+
+	Planet p2;
+	p2.position = glm::vec3(0.0f);
+	planetCollector.push_back(p2);
+
+	Planet p3;
+	p3.position = glm::vec3(0.0f);
+	planetCollector.push_back(p3);*/
 
 
 	lastTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
