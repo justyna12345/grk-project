@@ -190,7 +190,7 @@ void keyboard(unsigned char key, int x, int y)
 
 
 void mouseMovement(int x, int y) {
-	float moveSpeed = 0.7f;
+	float moveSpeed = 0.3f;
 	if(x > 1100) {
 		breaking = false;
 		if (changeCameraAngle < speedlimit ) {
@@ -206,7 +206,7 @@ void mouseMovement(int x, int y) {
 	if (x >= 520 && x <= 720) {
 		breaking = true;
 	}
-	if (y <= 320) {
+	if (y <= 120) {
 		cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed;
 	}
 	if (y >= 600) {
@@ -617,20 +617,20 @@ void renderScene()
 	//creating planets matrixs
 	//mars
 	glm::mat4 sphereModelMatrix1 = glm::mat4(1.0f);
-	sphereModelMatrix1 = glm::rotate(timer / 3, glm::vec3(-0.2f, 1.0f, 0.0f)) *
+	sphereModelMatrix1 = glm::rotate(timer / 30, glm::vec3(-0.2f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f, 0.0f, 10.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, 0.8f, 0.0f)) *
 		glm::scale(glm::vec3(0.5f));
 
 	//jupiter
 	//glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f))
 	glm::mat4 sphereModelMatrix2 = glm::mat4(1.0f);
-	sphereModelMatrix2 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
+	sphereModelMatrix2 = glm::rotate(timer / 20, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) * glm::rotate(timer / 2, glm::vec3(0.0f, -0.2f, 0.0f)) *
 		glm::scale(glm::vec3(0.7f));
 
 	//create moon
 	glm::mat4 sphereModelMatrix3 = glm::mat4(1.0f);
-	sphereModelMatrix3 = glm::rotate(timer / 6, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) *
-		glm::rotate(timer, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) *
+	sphereModelMatrix3 = glm::rotate(timer / 20, glm::vec3(-0.2f, 1.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 24.0f)) *
+		glm::rotate(timer/20, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f)) *
 		glm::rotate(timer / 2, glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::scale(glm::vec3(0.3f));
 
 	glm::mat4 marsPos = sphereModelMatrix1;
@@ -685,6 +685,7 @@ void renderScene()
 		{
 			bulletit = bullets.erase(bulletit);
 			jupiterDead = true;
+			erisDead = true;
 		}
 		else if (glm::distance(bullet->position + cameraPos + glm::vec3(0.0f, -0.15f, 0.0f), glm::vec3(erisPos[3][0], erisPos[3][1], erisPos[3][2])) < 0.02f + 0.3f)
 		{
